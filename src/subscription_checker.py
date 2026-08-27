@@ -8,12 +8,10 @@ paths_to_check = ["subscribe", "membership", "join", "pricing"]
 sub_keywords = ["subscri", "member", "plan"]
 
 # basic price pattern - $ followed by digits, optional cents
-# starting simple with USD format, can expand later if needed
 price_pattern = r"\$\d+(\.\d{2})?"
 
 
 def check_domain_paths(domain, paths=paths_to_check):
-    # stage 1 - just checking status codes and urls, no page content yet
     results = []
     for path in paths:
         url = f"https://{domain}/{path}"
@@ -22,22 +20,14 @@ def check_domain_paths(domain, paths=paths_to_check):
 
             if response.status_code == 200:
                 if response.url.endswith(f"https://{domain}/{path}"):
-                    # exact match, no redirect - probably good but not 100% sure
-                    # (found out some sites like Naver return 200 for everything
-                    # because of how their site is built, so this isnt guaranteed)
                     verdict = "positive"
                 elif any(word in response.url for word in sub_keywords):
                     verdict = "likely positive"
                 else:
-                    # redirected somewhere that doesnt look subscription related
-                    # probably just bounced to homepage
                     verdict = "manual positive"
-
             elif response.status_code == 404:
                 verdict = "clean negative"
-
             else:
-                # some other status code, not sure what it means, flag it
                 verdict = "manual negative"
 
             results.append({
@@ -45,12 +35,11 @@ def check_domain_paths(domain, paths=paths_to_check):
                 "path": path,
                 "status": response.status_code,
                 "final_url": response.url,
-                "html": response.text,  # only keeping this for the content check, remove later
+                "html": response.text,
                 "verdict": verdict
             })
 
         except requests.exceptions.RequestException as e:
-            # request failed completely - this is the "could not be crawled" case
             results.append({
                 "domain": domain,
                 "path": path,
@@ -64,29 +53,32 @@ def check_domain_paths(domain, paths=paths_to_check):
     return results
 
 
-def has_price_in_content(html):
-    # stage 2 check - looks for a price pattern in the actual page html
-    # NOTE: this only sees raw html, not stuff rendered by javascript.
-    # tested on nytimes.com/subscription and it did NOT find a real price -
-    # the only match was inside some javascript code ($1 used as a regex
-    # backreference, not an actual price). so a lot of sites render their
-    # prices with js and this check just wont catch that.
-    # false = "couldnt find it this way", not "there is no price"
+def has_price_in_content(html, context_chars=60):
+    # now returns the actual matches + surrounding text instead of just True/False,
+    # so a hit on a bare homepage (like CNN's /join redirect) can be checked
+    # for whether it's a real price or just noise from unrelated page content
     if not html:
-        return False
-    return bool(re.search(price_pattern, html))
+        return []
+
+    matches_with_context = []
+    for m in re.finditer(price_pattern, html):
+        start = max(0, m.start() - context_chars)
+        end = min(len(html), m.end() + context_chars)
+        matches_with_context.append({
+            "match": m.group(),
+            "context": html[start:end]
+        })
+    return matches_with_context
 
 
 def check_domain_full(domain, paths=paths_to_check):
-    # runs both stages together
     results = check_domain_paths(domain, paths)
 
     for r in results:
         if r["status"] == 200:
-            r["price_found_in_html"] = has_price_in_content(r["html"])
+            r["price_matches"] = has_price_in_content(r["html"])
         else:
-            r["price_found_in_html"] = None  # nothing to check
-
-        del r["html"]  # dont need to keep the full page html around
+            r["price_matches"] = None
+        del r["html"]
 
     return results
