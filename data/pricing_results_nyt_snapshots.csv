@@ -1,0 +1,9 @@
+domain,pricing_page_url,snapshot_timestamp,pricing_type,price_shown,reason_code
+,https://web.archive.org/web/20210101012345/https://www.nytimes.com/subscription/,20210101012345,,,could_not_crawl
+,https://web.archive.org/web/20210812050645/https://www.nytimes.com/subscription,20210812050645,,,could_not_crawl
+,https://web.archive.org/web/20220321003608/https://www.nytimes.com/subscription,20220321003608,,,could_not_crawl
+,https://web.archive.org/web/20221028001445/https://www.nytimes.com/subscription,20221028001445,,,could_not_crawl
+,https://web.archive.org/web/20230607042416/https://www.nytimes.com/subscription,20230607042416,,,no_price_found
+,https://web.archive.org/web/20240202004945/https://www.nytimes.com/subscription,20240202004945,,,could_not_crawl
+,https://web.archive.org/web/20240912010649/https://www.nytimes.com/subscription,20240912010649,unspecified,$1,
+,https://web.archive.org/web/20250502040116/https://www.nytimes.com/subscription,20250502040116,unspecified,$1,
