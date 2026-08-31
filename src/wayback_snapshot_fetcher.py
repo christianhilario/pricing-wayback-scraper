@@ -3,15 +3,22 @@ import re
 
 price_pattern = r"\$\d+(\.\d{2})?"
 
-def fetch_snapshot_price(snapshot, context_chars=60):
+
+def fetch_snapshot_price(snapshot, domain, context_chars=60):
     """
     Fetches one archived Wayback snapshot and searches its HTML for a
-    price pattern. Also captures surrounding text for each match so we
-    can eyeball whether it's a real price or noise (like the JS
-    backreference false positive found on the live NYT site).
+    price pattern. Also grabs the text around each match so I can check
+    whether it's a real price or just noise (like the JS backreference
+    issue I found on the live NYT site and again in CNN and later NYT
+    snapshots).
+
+    domain is passed in separately since a snapshot on its own only
+    has a timestamp and URL, not which domain it came from - without
+    this, the domain column in my final CSV output was coming out blank.
     """
     timestamp = snapshot["timestamp"]
     original_url = snapshot["original"]
+
     wayback_url = f"https://web.archive.org/web/{timestamp}/{original_url}"
 
     try:
@@ -28,6 +35,7 @@ def fetch_snapshot_price(snapshot, context_chars=60):
             })
 
         return {
+            "domain": domain,
             "timestamp": timestamp,
             "wayback_url": wayback_url,
             "status": response.status_code,
@@ -37,6 +45,7 @@ def fetch_snapshot_price(snapshot, context_chars=60):
 
     except requests.exceptions.RequestException as e:
         return {
+            "domain": domain,
             "timestamp": timestamp,
             "wayback_url": wayback_url,
             "status": None,
@@ -49,9 +58,10 @@ def fetch_snapshot_price(snapshot, context_chars=60):
 def sample_snapshots_across_range(snapshots, n=8):
     """
     Picks n snapshots evenly spread across the full list, instead of
-    fetching all of them. E.g. n=8 across 1769 snapshots gives you
-    roughly one every ~7 months over a 5 year range - enough to see
-    price changes over time without fetching everything.
+    fetching all of them. For nytimes.com/subscription there were 1,769
+    snapshots over 5 years - fetching every one would take hours, so
+    this spreads out a smaller sample (e.g. one every ~7 months) to
+    still show how pricing changed over time without needing everything.
     """
     if len(snapshots) <= n:
         return snapshots
